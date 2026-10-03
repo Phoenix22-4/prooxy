@@ -1,0 +1,9 @@
+{
+  "name": "claude-code-tool-proxy",
+  "version": "2.1.0",
+  "description": "Local proxy that gives Claude Code working tools behind providers that strip native tool_use",
+  "main": "alias-proxy.js",
+  "scripts": { "start": "node alias-proxy.js", "debug": "PROXY_DEBUG=1 node alias-proxy.js", "test": "node test/selftest.js" },
+  "engines": { "node": ">=18.0.0" },
+  "license": "MIT"
+}
