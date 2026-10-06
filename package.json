@@ -1,0 +1,9 @@
+{
+  "name": "claude-code-tool-proxy",
+  "version": "2.8.0",
+  "description": "Text-emulation proxy: gives Claude Code working tools behind providers that only expose their own functions",
+  "main": "alias-proxy.js",
+  "scripts": { "start": "node alias-proxy.js", "debug": "PROXY_DEBUG=1 node alias-proxy.js", "test": "node test/selftest.js", "check": "node diagnose.js" },
+  "engines": { "node": ">=18.0.0" },
+  "license": "MIT"
+}
