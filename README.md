@@ -219,7 +219,7 @@ Set any of these before running `start.ps1` / `start.sh` / `node alias-proxy.js`
 | `AUTO_COMPACT` | `1` | `0` = disable auto-compaction |
 | `AUTO_COMPACT_KB` | `260` | Trigger compaction when upstream context exceeds this size (KB) |
 | `COMPACT_KEEP_KB` | `80` | Keep this many KB of the most recent messages verbatim after compaction |
-| `SERVER_TOOLS` | `0` | `1` = pass server tools through to the relay (only works if your relay supports them) |
+| `SERVER_TOOLS` | `1` (on) | The proxy runs `WebSearch`, `WebFetch`, and `fetch_image` itself (your relay lacks Anthropic's server tools). `0` = disable proxy-side web tools |
 | `TRIM_ABOVE_KB` | `300` | Trim old tool output when a single message exceeds this size (KB) |
 | `KEEP_CACHE` | `1` | `0` = strip `cache_control` blocks (saves tokens if your relay double-bills cache) |
 | `UPSTREAM_MODEL` | *(relay default)* | Force a specific model name for every upstream call |
