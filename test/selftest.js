@@ -10,8 +10,6 @@ const TOOLS = [
   { name: 'Edit', description: 'Performs exact string replacements.', input_schema: { type: 'object', required: ['file_path', 'old_string', 'new_string'], properties: { file_path: { type: 'string' }, old_string: { type: 'string' }, new_string: { type: 'string' }, replace_all: { type: 'boolean' } } } },
   { name: 'Write', description: 'Writes a file.', input_schema: { type: 'object', required: ['file_path', 'content'], properties: { file_path: { type: 'string' }, content: { type: 'string' } } } },
   { name: 'Glob', description: 'Find files.', input_schema: { type: 'object', required: ['pattern'], properties: { pattern: { type: 'string' } } } },
-  { name: 'Grep', description: 'Search file contents.', input_schema: { type: 'object', required: ['pattern'], properties: { pattern: { type: 'string' }, path: { type: 'string' } } } },
-  { name: 'Bash', description: 'Run a shell command.', input_schema: { type: 'object', required: ['command'], properties: { command: { type: 'string' } } } },
   { name: 'read_tabular', description: 'provider fake', input_schema: { type: 'object', properties: {} } },
   { name: 'mcp__blender__x', description: 'noise', input_schema: { type: 'object', properties: {} } }];
 const req0 = (x = {}) => ({ model: 'm', max_tokens: 1000, stream: true, system: [{ type: 'text', text: 'sys' }], tools: TOOLS, messages: [{ role: 'user', content: 'go' }], ...x });
@@ -232,7 +230,7 @@ const tests = {
   },
   async 'SIDE-REQUEST: a small custom tool set with no forced choice is also emulated; the big agent request still gets core tools only'() {
     const r = proxy.transform({ model: 'm', system: 's', messages: [{ role: 'user', content: 'x' }], tools: [{ name: 'my_side_tool', description: 'd', input_schema: { type: 'object', properties: {} } }] }, 'text'); assert.deepEqual(r.tools.map(t => t.name), ['my_side_tool']);
-    const r2 = proxy.transform(req0(), 'text'); assert.deepEqual(r2.tools.map(t => t.name), ['Read', 'Edit', 'Write', 'Glob', 'Grep', 'Bash', 'WebSearch', 'WebFetch', 'fetch_image']);
+    const r2 = proxy.transform(req0(), 'text'); assert.deepEqual(r2.tools.map(t => t.name), ['Read', 'Edit', 'Write', 'Glob', 'WebSearch', 'WebFetch', 'fetch_image']);
   },
   async 'SIDE-REQUEST capture: PROXY_CAPTURE=1 writes request + provider reply to disk, no headers/keys'() {
     const os = require('node:os'), fs = require('node:fs'), path = require('node:path'); const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cap-'));
@@ -405,12 +403,12 @@ const tests = {
     try {
       script = [msg([{ type: 'text', text: 'Reading it.' }, { type: 'tool_use', id: 'tu1', name: 'read', input: { file_path: 'a.cs', limit: 50 } }])];
       const evs = events((await post('/v1/messages', req0())).text); structure(evs); const up = seen[0].body;
-      const natNames = up.tools.map(t => t.name).sort(); assert(natNames.includes('read') && natNames.includes('edit') && natNames.includes('write'), 'core tools natively: ' + natNames); assert(!natNames.includes('web_fetch'), 'server tools excluded from native channel'); assert(up.tools[0].input_schema.required && !up.tools[0].input_schema.$schema);
-      const sys = JSON.stringify(up.system); assert(sys.includes('NATIVE TOOLS') && sys.includes('is your Read tool'), 'native note for remapped tools');
+      assert.deepEqual(up.tools.map(t => t.name), ['read', 'edit', 'write']); assert(up.tools[0].input_schema.required.includes('file_path') && !up.tools[0].input_schema.$schema);
+      const sys = JSON.stringify(up.system); assert(sys.includes('NATIVE TOOLS') && sys.includes('`read` is your Read tool') && sys.includes('### Glob'), 'native note + text docs for the rest');
       const t = tu(evs); assert.equal(t.length, 1); assert.equal(t[0].content_block.name, 'Read'); assert.deepEqual(inp(evs, t[0]), { file_path: 'a.cs', limit: 50 }); assert.equal(stop(evs), 'tool_use');
       assert(JSON.stringify(evs).includes('Reading it.')); assert.equal(proxy.state.native, 'on');
-      script = [msg([{ type: 'tool_use', id: 'tu2', name: 'edit', input: { file_path: 'a', old_string: 'x</parameter>', new_string: 'y\n<param name="z">' } }, { type: 'text', text: 'Also:\n<tool_call name="Grep"><param name="pattern">TODO</param></tool_call>' }])];
-      const e2 = events((await post('/v1/messages', req0())).text); const t2 = tu(e2); assert(t2.some(x => x.content_block.name === 'Edit')); assert.deepEqual(inp(e2, t2.find(x => x.content_block.name === 'Edit')), { file_path: 'a', old_string: 'x</parameter>', new_string: 'y\n<param name="z">' }, 'native input is byte-exact, no tag parsing');
+      script = [msg([{ type: 'tool_use', id: 'tu2', name: 'edit', input: { file_path: 'a', old_string: 'x</parameter>', new_string: 'y\n<param name="z">' } }, { type: 'text', text: 'Also:\n<tool_call name="Glob"><param name="pattern">**/*.cs</param></tool_call>' }])];
+      const e2 = events((await post('/v1/messages', req0())).text); const t2 = tu(e2); assert.deepEqual(t2.map(x => x.content_block.name), ['Edit', 'Glob']); assert.deepEqual(inp(e2, t2[0]), { file_path: 'a', old_string: 'x</parameter>', new_string: 'y\n<param name="z">' }, 'native input is byte-exact, no tag parsing');
     } finally { process.env.NATIVE_TOOLS = '0'; proxy.state.native = null; }
   },
   async 'V3 NATIVE: history keeps native tool_use/tool_result as real blocks (results first), emulated ones as text; pairs are repaired'() {
@@ -420,10 +418,9 @@ const tests = {
         { role: 'user', content: [{ type: 'text', text: 'note' }, { type: 'tool_result', tool_use_id: 't2', content: 'globbed' }, { type: 'tool_result', tool_use_id: 't1', content: [{ type: 'text', text: 'file body' }, { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AAAA' } }] }] },
         { role: 'assistant', content: [{ type: 'tool_use', id: 't3', name: 'Bash', input: { command: 'dir' } }] }, { role: 'user', content: [{ type: 'text', text: 'interrupted' }] }];
       script = [msg('Fine.')]; await post('/v1/messages', req0({ messages: h })); const m = seen[0].body.messages;
-      assert.equal(m[1].role, 'assistant'); const au = m[1].content.filter(b => b.type === 'tool_use'); const natNames = au.map(b => b.name).sort();
-      assert(natNames.includes('read'), 'Read goes natively as read'); // Glob may also go natively if in the native map from capabilities.json
-      assert.equal(m[1].content.at(-1).type, 'tool_use', 'tool_use last'); const u = m[2].content; assert(u.some(b => b.type === 'tool_result' && b.tool_use_id === 't1')); assert(u.some(b => b.type === 'tool_result' && b.content && (Array.isArray(b.content) ? b.content.some(x => x.type === 'image') : false)), 'image kept inside a native result');
-      assert(u.some(b => b.type === 'text' && b.text.includes('note')));
+      assert.equal(m[1].role, 'assistant'); const au = m[1].content.filter(b => b.type === 'tool_use'); assert.deepEqual(au.map(b => b.name), ['read']); assert(m[1].content.some(b => b.type === 'text' && b.text.includes('<tool_call name="Glob"')));
+      assert.equal(m[1].content.at(-1).type, 'tool_use', 'tool_use last'); const u = m[2].content; assert.equal(u[0].type, 'tool_result'); assert.equal(u[0].tool_use_id, 't1'); assert(u[0].content.some(b => b.type === 'image'), 'image kept inside the native result');
+      assert(u.some(b => b.type === 'text' && b.text.includes('<tool_result tool="Glob"') && b.text.includes('globbed')) && u.some(b => b.type === 'text' && b.text.includes('note')));
       const last = m[m.length - 1].content; assert(last.some(b => b.type === 'tool_result' && b.tool_use_id === 't3' && b.is_error), 'a call without a recorded result gets a synthetic error result instead of a 400');
     } finally { process.env.NATIVE_TOOLS = '0'; proxy.state.native = null; }
   },

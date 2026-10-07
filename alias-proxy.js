@@ -41,7 +41,7 @@ const FAKE_RE    = /read_tabular|system_todo_write/;
 const REFUSAL_RE = /(?:do(?:n't| not)(?: actually)? have|no|not|cannot|can't|unable to|isn't|aren't|wasn't)\b[^.\n]{0,90}\b(?:tools?|Bash|Edit|Write|Read|Glob|Grep|PowerShell|file access|wired|exposed)\b|\b(?:wired|exposed) to me\b/i;
 const KEEP_MCP   = (process.env.KEEP_MCP || '').split(',').map(s => s.trim()).filter(Boolean);
 const CORE_TOOLS = new Set(['Bash', 'PowerShell', 'Read', 'Write', 'Edit', 'MultiEdit', 'Glob', 'Grep', 'LS', 'NotebookEdit',
-  'WebFetch', 'WebSearch', 'fetch_image', 'TodoWrite', 'TodoRead', 'Task', 'Agent', 'Skill', 'AskUserQuestion', 'EnterPlanMode', 'ExitPlanMode',
+  'WebFetch', 'WebSearch', 'TodoWrite', 'TodoRead', 'Task', 'Agent', 'Skill', 'AskUserQuestion', 'EnterPlanMode', 'ExitPlanMode',
   'BashOutput', 'KillShell', 'TaskStop', 'Monitor', 'ToolSearch', 'TaskCreate', 'TaskUpdate', 'TaskList', 'TaskGet', 'TaskOutput', 'EnterWorktree', 'ExitWorktree', 'ListMcpResourcesTool', 'ReadMcpResourceTool', 'ScheduleWakeup', 'CronCreate', 'CronDelete', 'CronList', ...(process.env.EXTRA_TOOLS || '').split(',').map(s => s.trim()).filter(Boolean)]);
 
 const log  = (...a) => console.log('[Proxy]', ...a);
@@ -147,8 +147,7 @@ const nativeMode = () => (process.env.NATIVE_TOOLS === '0' ? 'off' : process.env
 function nativeMap() {
   let extra = {}; try { extra = process.env.NATIVE_MAP ? JSON.parse(process.env.NATIVE_MAP) : {}; } catch { /* ignore */ }
   const m = { Read: 'read', Write: 'write', Edit: 'edit', Bash: 'bash', ...((CAP.native && CAP.native.map) || {}), ...extra };
-  // Never send proxy-run web tools through the native channel: the proxy must handle them for SSRF safety, custom search providers, and image handling
-  for (const k of Object.keys(m)) if (!m[k] || (SERVER_ON && search.SERVER_TOOL_NAMES.has(k))) delete m[k]; return m;
+  for (const k of Object.keys(m)) if (!m[k]) delete m[k]; return m;
 }
 const nativeWanted = () => nativeMode() !== 'off' && state.native !== 'off';
 function nativeToolDef(t, nmap) {

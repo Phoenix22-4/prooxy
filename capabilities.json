@@ -1,37 +1,14 @@
 {
-  "ts": "2026-10-07T19:49:03.425Z",
+  "ts": "2026-10-07T20:40:41.297Z",
   "base": "https://api.justwoker.icu",
   "model": "claude-opus-4-8",
-  "models": [
-    "claude-opus-4-8"
-  ],
+  "models": [],
   "native": {
-    "works": true,
-    "map": {
-      "Read": "read",
-      "Write": "write",
-      "Edit": "edit",
-      "Bash": "bash",
-      "Grep": "grep",
-      "Glob": "glob",
-      "WebFetch": "web_fetch",
-      "MultiEdit": "multi_edit",
-      "NotebookEdit": "notebook_edit"
-    },
-    "names": [
-      "read",
-      "write",
-      "edit",
-      "bash",
-      "grep",
-      "glob",
-      "web_fetch",
-      "task",
-      "multi_edit",
-      "notebook_edit"
-    ]
+    "works": false,
+    "map": {},
+    "names": []
   },
-  "vision": true,
+  "vision": false,
   "thinking": false,
-  "stream": true
+  "stream": false
 }
