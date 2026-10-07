@@ -23,10 +23,7 @@ Dashboard: **http://127.0.0.1:8082/** (live requests, tool usage, request size, 
 | Dashboard | New. |
 | Images | Images in tool results and prompts are passed to the model as real image blocks (`node probe.js` tells you whether your relay's model can see them). |
 
-## Compared with ccproxy.py (the Python proxy)
-Adopted from its design (own implementation; no code copied): native lowercase tools, proxy-run web tools, a dashboard, trimming of old output, count_tokens estimate.
-Where v3 differs: raw-tag text bridge with a fuzz-tested parser (wrong closers, C# `<param>` doc comments), guards against "I'll do it" stops and invented edits, time-budgeted retries, streaming only as a one-request fallback (streamed calls were billed ~4.7x), auto-compaction with cached notes, no Python/Flask, SSRF-guarded fetch.
-ccproxy still has: a ping every 3 s to Claude Code while it waits, a `usage_baseline_tokens` correction for the relay's hidden ~10k-token prompt, and a 70-test Python suite. v3 has 54 + 11 + probe tests.
+
 
 ## Search providers (first configured one that answers wins)
 `BRAVE_API_KEY` · `TAVILY_API_KEY` · `SEARXNG_URL` (self-hosted, can include Google results) · `GOOGLE_API_KEY`+`GOOGLE_CSE_ID` (**Google's Custom Search JSON API is closed to new customers and ends 2027-01-01**, so it only works if you already have a key) · DuckDuckGo (no setup, always the last resort). Scraping google.com directly is not supported: it breaks Google's terms and is blocked. Order: `SEARCH_PROVIDERS=brave,tavily,searxng,google,duckduckgo`.
@@ -40,5 +37,3 @@ ccproxy still has: a ping every 3 s to Claude Code while it waits, a `usage_base
 - A proxy cannot make the relay accept tools it blocks; native mode works only for the names it passes (see `capabilities.json`).
 - Compaction notes are written by the same model and can omit details: recent messages are verbatim and the model is told to re-read files instead of trusting memory.
 
-## License note
-ccproxy.py is PolyForm Noncommercial 1.0.0 (personal use is free; commercial use needs the author's licence). This proxy contains none of its code. If you ever build a commercial product, do not copy ccproxy's source into it.
